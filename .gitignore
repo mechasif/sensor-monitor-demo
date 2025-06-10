@@ -1,3 +1,10 @@
+# VS Code settings
+/.vscode
+
+# Build folders
+/build
+/ninja
+
 # Prerequisites
 *.d
 
