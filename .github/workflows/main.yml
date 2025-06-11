@@ -1,0 +1,53 @@
+name: Sensor Monitor CI Pipeline
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up CMake
+        uses: jwlawson/actions-setup-cmake@v1
+        with:
+          cmake-version: '3.28'
+
+      - name: Set up GCC
+        uses: egor-tensin/setup-gcc@v1
+        with:
+          version: 13
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y g++ cmake libpthread-stubs0-dev
+
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -DCMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic -Werror -ffunction-sections -fdata-sections -O0 -fprofile-arcs -ftest-coverage" \
+                -DCMAKE_EXE_LINKER_FLAGS="-Wl,--gc-sections"
+
+      - name: Build
+        run: cmake --build build -- -j$(nproc)
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Export test results (JUnit XML)
+        run: |
+          mkdir -p reports
+          ctest --test-dir build --output-on-failure --no-compress-output --output-junit reports/test_results.xml
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: build/reports/test_results.xml
